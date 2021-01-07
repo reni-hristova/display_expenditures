@@ -16,14 +16,18 @@ import javafx.scene.text.Text;
  *
  */
 public class Waffle extends Application {
-	private static final int 	WIDTH 	= 30,				// The width of each square.
-			 					OFFSET 	= WIDTH + 10;
+	private static final int WIDTH 			= 30,
+			 				SQUARE_OFFSET 	= WIDTH + 10,
+			 				LEGEND_OFFSET 	= SQUARE_OFFSET*15;
+
+	private int 		 sceneWidth 	 = 1200,
+			 			 sceneHeight 	 = 600;
 	
 	/**expenditures: Array of the company's expenditures*/
-	private static Expenditure[] expenditures;
+	public static Expenditure[] expenditures;
 	
 	/**maximum: number of sections to be displayed.*/
-	private int 	maximum 		= 10;
+	public static int 	maximum;
 	
 	/** numberOfSquares: the proportion of each expenditure as an integer. */
 	private int[] 	numberOfSquares = new int[maximum];
@@ -31,6 +35,7 @@ public class Waffle extends Application {
 	/** colours: a two dimensional array, which contains 
 	 * a set of 3 values (RGB) for each of the displayed expenditures.*/
 	private int[][] colours 		= new int[maximum][3];
+	
 	
 	/**
 	 * This method calculates the proportions of each
@@ -46,9 +51,14 @@ public class Waffle extends Application {
 		
 		int 	squares = 0;
 		float 	total 	= 0;
+		
+		Arrays.sort(expenditures, (Expenditure expenditure1, Expenditure expenditure2)
+				->expenditure2.getValue() - expenditure1.getValue());
+		
 		for(int i = 0; i < expenditures.length; i++) {
 			total += expenditures[i].getValue();
 		}
+		
 		for(int i = 0; i < maximum - 1; i++) {
 			numberOfSquares[i] 	 = (int)Math.round((expenditures[i].getValue()/total)*100);
 			squares 			+= numberOfSquares[i];
@@ -62,30 +72,41 @@ public class Waffle extends Application {
 	 * colour-coded squares. The result is stored in the array colours.
 	 */
 	public void assignColours(){
-		int counter = maximum;
-		int r = 255, g = 200, b = 200;			// values for red, green and blue channel respectively
+		short 	colourCounter 	= 1;
+		int 		  counter 	= maximum,
+							r 	= 255, 
+							g 	= 200, 
+							b 	= 200;
+		
 		for(int i = 0; counter > 0; i++, counter--){
 			colours[i][0] 	= r;
 			colours[i][1] 	= g;
 			colours[i][2] 	= b;
 			
-			// Change the RGB values after each iteration.
-			r += b; b = Math.abs(r - b); r -= b;	//swaps the values of r and b.
-			r += g; g = Math.abs(r - g); r -= g;	//swaps the values of r and g. => r = g; g = b; b = r;
+			//Swapping the values of r and and b and then r and g, which results
+			//in r = g; g = b; b = r; which changes the colour drastically enough.
+			r += b; b = Math.abs(r - b); r -= b;
+			r += g; g = Math.abs(r - g); r -= g;
 			
-			if (i>5 && i<15){
-				g = Math.abs(g-100);
-				while(g>250) g-=50;
-			}
-			else {
-				if(i>15) {
+			switch(colourCounter%3) {
+				case 0: {
 					b = Math.abs(b-150);
-					while(b>250) b-=50;
-				}
-				else {
+					while(b>250) b -= 50;
+					colourCounter  -= 2;
+					break;
+					}
+				case 1:{
 					r = Math.abs(r-200);
-					while(r>250) r-=50;
-				}
+					while(r>250) r -= 50;
+					colourCounter++;
+					break;
+					}
+				case 2: {
+					g = Math.abs(g-100);
+					while(g>250) g -= 50;
+					colourCounter++;
+					break;
+					}
 			}
 		}
 	 }
@@ -97,7 +118,8 @@ public class Waffle extends Application {
 	@Override
 	public void start(Stage waffleChart) throws Exception {
 		Group group = new Group();
-		Scene scene = new Scene(group, 850, 650);
+		Scene scene = new Scene(group, sceneWidth, sceneHeight);
+		Rectangle square;
 		
 		// Sort the expenditures
 		Arrays.sort(expenditures, (Expenditure expenditure1, Expenditure expenditure2)
@@ -110,11 +132,10 @@ public class Waffle extends Application {
 		// Iterate over every square in the grid
 		/**expIndex:  index of the element from the array numberOfSquares. */
 		for(int i = 0, expIndex = 0; i < 10; i++) {
-			for(int j = 0; j < 10 && expIndex < maximum; j++) {
-				
+			for(int j = 0; j < 10 && expIndex < maximum; j++) {				
 				// Create a new square using the generated colours
 				if (numberOfSquares[expIndex] > 0) {
-					Rectangle square = new Rectangle(OFFSET*(j+1), OFFSET*(i+1), WIDTH, WIDTH);
+					square = new Rectangle(SQUARE_OFFSET*(j+1), SQUARE_OFFSET*(i+1), WIDTH, WIDTH);
 					square.setFill(Color.rgb(colours[expIndex][0], 
 											 colours[expIndex][1], 
 											 colours[expIndex][2]));
@@ -124,14 +145,14 @@ public class Waffle extends Application {
 				
 				// Add the legend on the right side of the grid 
 				if(numberOfSquares[expIndex] == 0) {
-					Rectangle descriptionSquare = new Rectangle(OFFSET*15, OFFSET*(expIndex+1), WIDTH, WIDTH);
+					Rectangle descriptionSquare = new Rectangle(LEGEND_OFFSET, SQUARE_OFFSET*(expIndex+1), WIDTH, WIDTH);
 					descriptionSquare.setFill(Color.rgb(colours[expIndex][0], 
 													 	colours[expIndex][1], 
 													 	colours[expIndex][2]));
 					group.getChildren().add(descriptionSquare);
 					
 					String description = (expIndex == (maximum-1)) ? "Other" : expenditures[expIndex].getDescription();
-					group.getChildren().add(new Text(OFFSET*16, OFFSET*(expIndex+1.5), description));		
+					group.getChildren().add(new Text(LEGEND_OFFSET + SQUARE_OFFSET, SQUARE_OFFSET*(expIndex+1.5), description));		
 					
 					// Go to the next expenditure
 					expIndex++;
@@ -144,21 +165,41 @@ public class Waffle extends Application {
 		waffleChart.setScene(scene);
 		waffleChart.show();
 	} 
-
 	
 	public static void main(String[] args) {
-		Expenditure[] expendituresA = new Expenditure[]{ 	new Expenditure("Salaries", 11000),
-															new Expenditure("Paper", 2000),
-															new Expenditure("Rent", 5000),
-															new Expenditure("Most popular books on Java etc.", 10000),
-															new Expenditure("Heating", 3000),
-															new Expenditure("Coffee/Tea", 7000),
-															new Expenditure("Biscuits", 8000),
-															new Expenditure("Travel", 18000),
-															new Expenditure("Electricity", 1000),
-															new Expenditure("Pencils", 3000)
-														};
-		expenditures = expendituresA;
-		launch(args);
+		Expenditure[]expenditure1 = new Expenditure[] {	new Expenditure("AI", 15000),
+														new Expenditure("Actors", 5600),
+														new Expenditure("Lighting", 10500),
+														new Expenditure("Food", 6000),
+														new Expenditure("Spoons", 6000),
+														new Expenditure("Dog pictures", 15600),
+														new Expenditure("Developers", 20000),
+														new Expenditure("Renovation", 60500),
+														new Expenditure("Notebooks", 15000),
+														new Expenditure("Fancy dress", 10000),
+														new Expenditure("", 2500),
+														new Expenditure("Dolls", 2500),
+														new Expenditure("Toy robots", 5000),
+														new Expenditure("Kids' entertainer", 15000),
+														new Expenditure("Pizza", 10000),
+														new Expenditure("Salaries", 11000),
+														new Expenditure("Paper", 2000),
+														new Expenditure("Rent", 5000),
+														new Expenditure("Most popular books on Java etc.", 10000),
+														new Expenditure("Heating", 3000),
+														new Expenditure("Coffee/Tea", 7000),
+														new Expenditure("Biscuits", 8000),
+														new Expenditure("Travel", 18000),
+														new Expenditure("Electricity", 1000),
+														new Expenditure("Pencils", 3000)
+													};
+		expenditures = expenditure1;
+		maximum = 11;
+		try {
+			launch(args);
+		}
+		catch(IllegalArgumentException e){
+			System.out.println("Maximum is larger than the size of the array.");
+		}
 	}
 }
